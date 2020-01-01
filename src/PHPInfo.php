@@ -20,34 +20,12 @@ class PHPInfo
 		$this->_phpinfo = NULL;
 	}
 
-	public function set_info($phpinfo, string $mode = 'text')
-	{
-		$this->_phpinfo = [
-			'mode' => $mode,
-			'data' => $phpinfo
-		];
 
-		return $this;
+	public function parse($phpinfo)
+	{
+		return $this->_parse_text($phpinfo);
 	}
 
-	public function get()
-	{
-		if ( is_array($this->_phpinfo) &&
-			array_key_exists('mode', $this->_phpinfo) 
-		) {
-			switch ( $this->_phpinfo['mode'] ) 
-			{
-				case 'text':
-					return $this->_parse_text($this->_phpinfo['data']);
-					break;
-				// case 'html':
-					// return $this->_parse_html($this->_phpinfo['data']);
-					// break;
-			}
-		}
-
-		return FALSE;
-	}
 
 	private function _parse_text($phpinfo)
 	{
@@ -65,16 +43,17 @@ class PHPInfo
 
 		$array = $this->_parse_single_text_block($header);
 
-		$processedBody = $this->_parse_text_blocks($body, ['Configuration', 'Environment', 'PHP Variables', 'PHP License']);
+		$processed_body = $this->_parse_text_blocks($body, ['Configuration', 'Environment', 'PHP Variables', 'PHP License']);
 		
-		foreach ( $processedBody as $k => $v ) 
+		foreach ( $processed_body as $k => $v ) 
 		{
 			switch ( $k ) 
 			{
 				case 'Configuration':
 					$modules = $this->_parse_text_blocks($v, get_loaded_extensions());
-					foreach ($modules as $moduleName => $moduleSettings) {
-						$array['Configuration'][$moduleName] = $this->_parse_single_text_block($moduleSettings);
+					foreach ( $modules as $module_name => $module_settings ) 
+					{
+						$array['Configuration'][$module_name] = $this->_parse_single_text_block($module_settings);
 					}
 					break;
 				case 'PHP License':
@@ -117,10 +96,12 @@ class PHPInfo
 				$current_block[] = $line;
 			}
 		}
+
 		if ($current_key != NULL) 
 		{
 			$settings[$current_key] = $current_block;
-		} #$this->_parse_single_text_block($current_block);
+		} 
+
 		return $settings;
 	}
 
