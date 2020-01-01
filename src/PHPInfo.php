@@ -70,8 +70,6 @@ class PHPInfo
 
 	private function _parse_text_blocks($blocks, $block_keys)
 	{
-		$settings = [];
-		$current_key = NULL;
 		$current_block = [];
 		foreach ( $blocks as $line ) 
 		{
@@ -82,9 +80,11 @@ class PHPInfo
 				# Each extension block starts with the name of the extension. And if the current line is such a line, then we
 				#   need to start a new block, but before that, we need to process the current_block and assign its results
 				#   to the current_key
-				if ($current_key != NULL) {
-					$settings[$current_key] = $current_block; #$this->_parse_single_text_block($current_block);
+				if ( $current_key !== NULL ) 
+				{
+					$settings[$current_key] = $current_block;
 				}
+				
 				$current_key = $line;
 				$current_block = [];
 			}
@@ -97,65 +97,55 @@ class PHPInfo
 			}
 		}
 
-		if ($current_key != NULL) 
+		if ($current_key !== NULL) 
 		{
 			$settings[$current_key] = $current_block;
 		} 
 
-		return $settings;
+		return $settings ?? [];
 	}
 
 	private function _parse_single_text_block($block)
 	{
-		$settings = [];
-		$current_key = NULL;
-
-		foreach ($block as $line) 
+		foreach ( $block as $block_line ) 
 		{
-			$line = trim($line);
-			if (strlen($line) > 0) 
+			$line = trim($block_line);
+
+			if ( ! (strlen($line) > 0 && strpos($line, '=>') !== FALSE) ) 
 			{
-				if (strpos($line, '=>') !== false) 
-				{
-					$parts = explode('=>', $line);
-					$parts[0] = trim($parts[0]);
-					$parts[1] = trim($parts[1]);
-					switch (count($parts)) {
-						case 2:
-							if (
-								$parts[0] !== 'Variable' &&
-								$parts[1] !== 'Value'
-							) {
-								$current_key = $parts[0];
-								$settings[$current_key] = $parts[1];
-							}
-							break;
-						case 3:
-							$parts[2] = trim($parts[2]);
-							if (
-								$parts[0] !== 'Directive' &&
-								$parts[1] !== 'Local Value' &&
-								$parts[2] !== 'Master Value'
-							) {
-								$current_key = $parts[0];
-								$settings[$current_key] = [
-									'Local Value' => $parts[1],
-									'Master Value' => $parts[2]
-								];
-							}
-							break;
+				continue;
+			}
+			
+			$parts = array_map(
+				fn($part) => trim($part),
+				explode('=>', $line) );
+
+			switch (count($parts)) {
+				case 2:
+					if (
+						$parts[0] !== 'Variable' &&
+						$parts[1] !== 'Value'
+					) {
+						$current_key = $parts[0];
+						$settings[$current_key] = $parts[1];
 					}
-				} 
-				elseif ($current_key != NULL) 
-				{
-					$settings[$current_key] .= $line;
-				}        
-			} 
-			else 
-			{
-				$current_key = NULL;
+					break;
+				case 3:
+					if (
+						$parts[0] !== 'Directive' &&
+						$parts[1] !== 'Local Value' &&
+						$parts[2] !== 'Master Value'
+					) {
+						$current_key = $parts[0];
+						$settings[$current_key] = [
+							'Local Value' => $parts[1],
+							'Master Value' => $parts[2]
+						];
+					}
+					break;
 			}
 		}
-		return $settings;
+
+		return $settings ?? [];
 	}
 }
